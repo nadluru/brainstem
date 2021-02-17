@@ -1,36 +1,29 @@
 #!/bin/bash
-workingDir=${studyRoot}/ANTSWarping
-
-fixedImg=
-movingImg=
-
+workingDir=/scratch/hartwell/Olga/Tractography_Nagesh
 cd ${workingDir}
-movingImg=
-movedImg=
 
-echo "Composing the affine inv and diffeo inv in that order."
-prefix="ANTS_"
-antsApplyTransforms -r ${movingImg} -t [${prefix}0GenericAffine.mat,1] ${prefix}1InverseWarp.nii.gz -o [${prefix}FullInverseWarpAffInvCompDiffeo.nii.gz,1]
+movingImg=H001_fod.mif
+movedImg=wmfod_template.mif
 
 echo "MRTRIX"
 echo "Creating an empty warp grid in the moved image space."
-warpinit ${movedImg} InitWarp-[].nii.gz -force
+warpinit ${movedImg} InitWarp-[].mif -force
 
 echo "Warping this empty warp grid to the moving image space."
 for i in `echo 0 1 2`
 do
-echo "Warping InitWarp-${i}.nii."
-antsApplyTransforms -i InitWarp-${i}.nii.gz -o FinalWarpAffInvCompDiffeo-${i}.nii.gz -t ${prefix}FullInverseWarpAffInvCompDiffeo.nii.gz -r ${movingImg}
+echo "Warping InitWarp-${i}.mif."
+mrtransform -warp H001_2temp_warp.mif -template ${movingImg} InitWarp-${i}.mif FinalWarpAffInvCompDiffeo-${i}.mif -force
 done
 
 echo "Correct the warped grid."
-warpcorrect FinalWarpAffInvCompDiffeo-[].nii.gz FinalWarpAffInvCompDiffeoCorrected.mif -force
+warpcorrect FinalWarpAffInvCompDiffeo-[].mif FinalWarpAffInvCompDiffeoCorrected.mif -force
 
 echo "Now warping the tck files to the population space."
-warp=${workingDir}/FinalWarpAffInvCompDiffeoCorrected.mif
+warp=FinalWarpAffInvCompDiffeoCorrected.mif
 
 for tck in `ls *tck`
 do
 echo ${tck%.tck*}
-tcknormalise ${tck} ${warp} ${outRoot}/${tck%.tck*}AffInvCompDiffeoWarpedInInfPop.tck -force
+tcknormalise ${tck} ${warp} ${tck%.tck*}AffInvCompDiffeoWarpedToSubj.tck -force
 done
